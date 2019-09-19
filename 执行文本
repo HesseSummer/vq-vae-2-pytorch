@@ -1,0 +1,8 @@
+python train_vqvae.py '/home/user/datasets/CUB_200_2011/data/birds/CUB_200_2011/images'
+
+python extract_code.py --ckpt checkpoint/vqvae_560.pt --name 'lmdb560' '/home/user/datasets/CUB_200_2011/data/birds/CUB_200_2011/images'
+
+python train_pixelsnail.py 'lmdb560'
+
+python train_pixelsnail.py 'lmdb560' --hier bottom
+

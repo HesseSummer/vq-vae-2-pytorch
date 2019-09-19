@@ -12,22 +12,25 @@ from pixelsnail import PixelSNAIL
 @torch.no_grad()
 def sample_model(model, device, batch, size, temperature, condition=None):
     row = torch.zeros(batch, *size, dtype=torch.int64).to(device)
+    print(row.size())
     cache = {}
 
     for i in tqdm(range(size[0])):
         for j in range(size[1]):
             out, cache = model(row[:, : i + 1, :], condition=condition, cache=cache)
+            print(i, j, out.size())
             prob = torch.softmax(out[:, :, i, j] / temperature, 1)
             sample = torch.multinomial(prob, 1).squeeze(-1)
             row[:, i, j] = sample
+            print(i, j, sample)
 
+    print(row)
     return row
 
 
 def load_model(model, checkpoint, device):
     ckpt = torch.load(os.path.join('checkpoint', checkpoint))
 
-    
     if 'args' in ckpt:
         args = ckpt['args']
 
@@ -61,7 +64,7 @@ def load_model(model, checkpoint, device):
             n_cond_res_block=args.n_cond_res_block,
             cond_res_channel=args.n_res_channel,
         )
-        
+
     if 'model' in ckpt:
         ckpt = ckpt['model']
 

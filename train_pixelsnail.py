@@ -1,10 +1,14 @@
 import argparse
-
+import os
 import numpy as np
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+import logging
+from myutils import init_logging
+from tensorboardX import SummaryWriter
+
 
 try:
     from apex import amp
@@ -17,7 +21,7 @@ from pixelsnail import PixelSNAIL
 from scheduler import CycleScheduler
 
 
-def train(args, epoch, loader, model, optimizer, scheduler, device):
+def train(args, epoch, loader, model, optimizer, scheduler, device, log, writer):
     loader = tqdm(loader)
 
     criterion = nn.CrossEntropyLoss()
@@ -49,12 +53,68 @@ def train(args, epoch, loader, model, optimizer, scheduler, device):
 
         lr = optimizer.param_groups[0]['lr']
 
+        log('epoch: %d; loss: %.5f; acc: %.5f; lr: %.5f',
+            (epoch+1), loss.item(), accuracy, lr)
+
         loader.set_description(
             (
                 f'epoch: {epoch + 1}; loss: {loss.item():.5f}; '
                 f'acc: {accuracy:.5f}; lr: {lr:.5f}'
             )
         )
+
+        niter = args.batch * epoch + i
+        writer.add_scalar('Train/Loss', loss.item(), niter)
+        writer.add_scalar('Train/Acc', accuracy, niter)
+
+
+def test(args, epoch, loader, model, device, log, writer):
+    loader = tqdm(loader)
+    criterion = nn.CrossEntropyLoss()
+
+    test_loss = 0
+    test_correct = 0
+    total = 0
+
+    for i, (top, bottom, label) in enumerate(loader):
+        with torch.no_grad():
+
+            top = top.to(device)
+
+            if args.hier == 'top':
+                target = top
+                out, _ = model(top)
+
+            elif args.hier == 'bottom':
+                bottom = bottom.to(device)
+                target = bottom
+                out, _ = model(bottom, condition=top)
+
+            loss = criterion(out, target)
+            test_loss += loss.item() * target.numel()
+
+            _, pred = out.max(1)
+            correct = (pred == target).float()
+            test_correct += correct
+            accuracy = correct.sum() / target.numel()
+
+            total += target.numel()
+
+            loader.set_description(
+                (
+                    f'epoch: {epoch + 1}; loss: {loss.item():.5f}; '
+                    f'acc: {accuracy:.5f}; '
+                )
+            )
+
+            niter = args.batch * epoch + i
+            writer.add_scalar('Test/Loss', loss.item(), niter)
+            writer.add_scalar('Test/Acc', accuracy, niter)
+
+    test_loss = test_loss / total
+    test_acc = test_correct / total
+    log('epoch: %d; test_loss: %.5f; test_acc: %.5f;',
+        (epoch + 1), test_loss, test_acc)
 
 
 class PixelTransform:
@@ -147,8 +207,14 @@ if __name__ == '__main__':
             optimizer, args.lr, n_iter=len(loader) * args.epoch, momentum=None
         )
 
+    logging = init_logging('log')
+    log = logging.log
+    writer = SummaryWriter('log/board')
     for i in range(args.epoch):
-        train(args, i, loader, model, optimizer, scheduler, device)
+        log('--' * 50)
+        train(args, i, loader, model, optimizer, scheduler, device, log, writer)
+        log('--' * 50)
+        test(args, i, loader, model, device, log, writer)
         torch.save(
             {'model': model.module.state_dict(), 'args': args},
             f'checkpoint/pixelsnail_{args.hier}_{str(i + 1).zfill(3)}.pt',

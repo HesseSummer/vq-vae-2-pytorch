@@ -10,9 +10,10 @@ from tqdm import tqdm
 
 from vqvae import VQVAE
 from scheduler import CycleScheduler
+import logging
+from myutils import init_logging
 
-
-def train(epoch, loader, model, optimizer, scheduler, device):
+def train(epoch, loader, model, optimizer, scheduler, device, log):
     loader = tqdm(loader)
 
     criterion = nn.MSELoss()
@@ -50,6 +51,9 @@ def train(epoch, loader, model, optimizer, scheduler, device):
                 f'lr: {lr:.5f}'
             )
         )
+
+        log('epoch: %d; mse: %.5f; latent: %.3f; avg mse: %.5f; lr: %.5f',
+            (epoch + 1), recon_loss.item(), latent_loss.item(), (mse_sum / mse_n), lr)
 
         if i % 100 == 0:
             model.eval()
@@ -105,8 +109,10 @@ if __name__ == '__main__':
             optimizer, args.lr, n_iter=len(loader) * args.epoch, momentum=None
         )
 
+    logging = init_logging(logging)
+    log = logging.log
     for i in range(args.epoch):
-        train(i, loader, model, optimizer, scheduler, device)
+        train(i, loader, model, optimizer, scheduler, device, log)
         torch.save(
             model.module.state_dict(), f'checkpoint/vqvae_{str(i + 1).zfill(3)}.pt'
         )
