@@ -157,7 +157,7 @@ train_model = Model([x_in, z_in],
 t1_loss = z_real_mean - z_fake_ng_mean  # Dloss，给avg(z_real)0，给avg(z_fake)1（固定G）
 t2_loss = z_fake_mean - z_fake_ng_mean  # Gloss，企图欺骗让avg(z_fake)0
 z_corr = correlation(z_in, z_fake)  # Pearson相关系数
-qp_loss = 0.25 * t1_loss[:, 0]**2 / K.mean((x_real - x_fake_ng)**2, axis=[1, 2, 3])
+qp_loss = 0.25 * t1_loss[:, 0]**2 / K.mean((x_real - x_fake_ng)**2, axis=[1, 2, 3])  # 感觉和文章里的qp_loss不太一样，得再看看那篇文章的源码，但是这次先放下把
 
 train_model.add_loss(K.mean(t1_loss + t2_loss - 0.5 * z_corr) + K.mean(qp_loss))
 train_model.compile(optimizer=RMSprop(1e-4, 0.99))
@@ -172,6 +172,9 @@ train_model.summary()
 
 # 采样函数
 def sample(path, n=9, z_samples=None):
+    """
+    使用随机噪声、目前的G，随机产生n*n张图片（放到一个图中），存入path
+    """
     figure = np.zeros((img_dim * n, img_dim * n, 3))
     if z_samples is None:
         z_samples = np.random.randn(n**2, z_dim)
@@ -189,16 +192,20 @@ def sample(path, n=9, z_samples=None):
 
 # 重构采样函数
 def sample_ae(path, n=8):
+    """
+    一对图片：左边是真实照片，右边是它的生成图；4*4=16对
+    使用目前的模型，展示encoder的效果
+    """
     figure = np.zeros((img_dim * n, img_dim * n, 3))
     for i in range(n):
         for j in range(n):
             if j % 2 == 0:
-                x_sample = [imread(np.random.choice(imgs))]
+                x_sample = [imread(np.random.choice(imgs))]  # 最外面加一个维度，batch size=1
             else:
-                z_sample = e_model.predict(np.array(x_sample))
-                z_sample -= (z_sample).mean(axis=1, keepdims=True)
-                z_sample /= (z_sample).std(axis=1, keepdims=True)
-                x_sample = g_model.predict(z_sample * 0.9)
+                z_sample = e_model.predict(np.array(x_sample))  # 好奇怪，上一轮的x_sample应该被销毁了呀，又不是更高层的变量
+                z_sample -= (z_sample).mean(axis=1, keepdims=True)  # 将z_sample再normalize
+                z_sample /= (z_sample).std(axis=1, keepdims=True)  # 将z_sample再normalize
+                x_sample = g_model.predict(z_sample * 0.9)  # 再乘以0.9..？
             digit = x_sample[0]
             figure[i * img_dim:(i + 1) * img_dim,
                    j * img_dim:(j + 1) * img_dim] = digit
