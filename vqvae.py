@@ -221,6 +221,10 @@ class VQVAE(nn.Module):
         )
 
     def forward(self, input):
+        """
+        :param input: 图片(bs, 3, imgdim, imgdim)
+        :return: 拟合的图片(bs, 3, imgdim, imgdim)
+        """
         quant_t, quant_b, diff, _, _ = self.encode(input)
         dec = self.decode(quant_t, quant_b)
 

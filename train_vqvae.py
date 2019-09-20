@@ -29,8 +29,8 @@ def train(epoch, loader, model, optimizer, scheduler, device, log):
 
         img = img.to(device)
 
-        out, latent_loss = model(img)
-        recon_loss = criterion(out, img)
+        out, latent_loss = model(img)  # latent_loss即图片和对应编码的距离diff
+        recon_loss = criterion(out, img)  # 即生成图和真实图的距离
         latent_loss = latent_loss.mean()
         loss = recon_loss + latent_loss_weight * latent_loss
         loss.backward()
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     scheduler = None
     if args.sched == 'cycle':
         scheduler = CycleScheduler(
-            optimizer, args.lr, n_iter=len(loader) * args.epoch, momentum=None
+            optimizer, args.lr, n_iter=len(loader) * args.epoch, momentum=None  # len(loader)=batch size
         )
 
     logging = init_logging(logging)
