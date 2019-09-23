@@ -11,9 +11,9 @@ import lmdb
 CodeRow = namedtuple('CodeRow', ['top', 'bottom', 'filename'])
 
 
-class ImageFileDataset(datasets.ImageFolder):
+class ImageFileDataset(datasets.ImageFolder):  # 继承自datasets.ImageFolder
     def __getitem__(self, index):
-        sample, target = super().__getitem__(index)
+        sample, target = super().__getitem__(index)  # ImageFolder返回sample, target，不知道是一张还是一批
         path, _ = self.samples[index]
         dirs, filename = os.path.split(path)
         _, class_name = os.path.split(dirs)

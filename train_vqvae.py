@@ -52,21 +52,23 @@ def train(epoch, loader, model, optimizer, scheduler, device, log):
             )
         )
 
-        log('epoch: %d; mse: %.5f; latent: %.3f; avg mse: %.5f; lr: %.5f',
-            (epoch + 1), recon_loss.item(), latent_loss.item(), (mse_sum / mse_n), lr)
+        log(
+            'epoch: %d; mse: %.5f; latent: %.3f; avg mse: %.5f; lr: %.5f',
+            (epoch + 1), recon_loss.item(), latent_loss.item(), (mse_sum / mse_n), lr
+        )
 
         if i % 100 == 0:
             model.eval()
 
-            sample = img[:sample_size]
+            sample = img[:sample_size]  # 取sample_size张图片->(sample_size, 3, h, w)
 
             with torch.no_grad():
                 out, _ = model(sample)
 
             utils.save_image(
-                torch.cat([sample, out], 0),
-                f'sample/{str(epoch + 1).zfill(5)}_{str(i).zfill(5)}.png',
-                nrow=sample_size,
+                torch.cat([sample, out], 0),  # (2*sample_size, 3, h, w)
+                f'sample/{str(epoch + 1).zfill(5)}_{str(i).zfill(5)}.png',  # zfill保正5个字符，不足补0，右对齐
+                nrow=sample_size,  # 每行sample_size张图片
                 normalize=True,
                 range=(-1, 1),
             )
@@ -109,8 +111,7 @@ if __name__ == '__main__':
             optimizer, args.lr, n_iter=len(loader) * args.epoch, momentum=None  # len(loader)=batch size
         )
 
-    logging = init_logging(logging)
-    log = logging.log
+    log = init_logging(logging)  # log函数
     for i in range(args.epoch):
         train(i, loader, model, optimizer, scheduler, device, log)
         torch.save(

@@ -157,7 +157,7 @@ train_model = Model([x_in, z_in],
 t1_loss = z_real_mean - z_fake_ng_mean  # Dloss，给avg(z_real)0，给avg(z_fake)1（固定G）
 t2_loss = z_fake_mean - z_fake_ng_mean  # Gloss，企图欺骗让avg(z_fake)0
 z_corr = correlation(z_in, z_fake)  # Pearson相关系数
-qp_loss = 0.25 * t1_loss[:, 0]**2 / K.mean((x_real - x_fake_ng)**2, axis=[1, 2, 3])  # 感觉和文章里的qp_loss不太一样，得再看看那篇文章的源码，但是这次先放下把
+qp_loss = 0.25 * t1_loss[:, 0]**2 / K.mean((x_real - x_fake_ng)**2, axis=[1, 2, 3])  # 感觉和文章里的qp_loss不太一样，得再看看那篇文章的源码，但是这次先放下吧
 
 train_model.add_loss(K.mean(t1_loss + t2_loss - 0.5 * z_corr) + K.mean(qp_loss))
 train_model.compile(optimizer=RMSprop(1e-4, 0.99))
